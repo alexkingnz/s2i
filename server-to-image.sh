@@ -11,6 +11,7 @@ function usage {
   Usage: $0 
     --files (default to / )
 
+    --one-file-system only backup the root filesystem, ignore other mounted filesystems
     --outputdir output directory [ /root/backup.s2i ]
     --outputfile output file [ backup-$dt ]
     --outputextn output file extension [ gz | zip | gz.enc depending on encryption ]
@@ -77,6 +78,9 @@ function parse() {
           echo "Unrecognized --encrypt type '$1'" >&2
           isusage="xxx"
         fi
+      ;;
+      --one-file-system)
+        rootonly="--one-file-system"
       ;;
       --outputdir)
         shift
@@ -212,7 +216,8 @@ taropts="--numeric-owner --create --preserve-permissions --gzip --file -
 --exclude=/usr/src/linux-headers* 
 --exclude=/home/*/.gvfs 
 --exclude=/home/*/.cache 
---exclude=/home/*/.local/share/Trash $files"
+--exclude=/home/*/.local/share/Trash
+$rootonly $files"
 
 ip="$(ifconfig eth0 | grep 'inet ' | sed 's/inet addr:/inet /' | awk '{print $2}')"
 [ -z "$ip" ] && echo "Could not determine IP address." >&2 && exit 1 
