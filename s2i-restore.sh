@@ -105,6 +105,7 @@ function parse() {
         encrypt="openssl"
         ;;
       --password)
+        shift
         if [ -z "$1" ]; then
           echo "Missing --password value" >&2
           usage
