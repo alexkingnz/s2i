@@ -32,6 +32,8 @@ echo "$0 usage:
   [ --ignoreports ] lets the restore proceed even if ports are in use (a safety precaution)
   [ --ignorehostname ] lets the restore proceed even if the server hostname is not like backup.something (a safety precaution)
   [ --ignorespace ] lets the restore proceed even if the script reports there may be insufficient space (a safety precaution)
+  [ --decrypt openssl ] decrypt a file using openssl before attempting to restore from it
+  [ --password ] password for openssl decryption.
   Will extract the tar.gz archivegz to the restoretopath (default /)
   "
 }
@@ -93,7 +95,24 @@ function parse() {
       --ignorespace)
         isignorespace="xxx"
         ;;
-        
+      --decrypt)
+        shift
+        openssl ] decrypt a file using openssl before attempting to restore from it
+        if [ "$1" != "openssl" ]; then
+          echo "Missing --restoretopath value" >&2
+          usage
+          return 1
+        fi
+        encrypt="openssl"
+        ;;
+      --password)
+        if [ -z "$1" ]; then
+          echo "Missing --password value" >&2
+          usage
+          return 1
+        fi
+        password="$1"
+        ;;
       --help)
         usage
         return 1
@@ -135,10 +154,14 @@ while true; do
   #amavisd-snmp-subagent.service          disabled        enabled
   #apache-htcacheclean.service            disabled        enabled
   #apache-htcacheclean@.service           disabled        enabled
-  for i in $(systemctl list-unit-files | grep -v '@' | egrep 'redis|fail2ban|postfix|virtualmin|webmin|usermin|named|dovecot|proftp|exim|spamass|php|postgres|mailman|mysql|mariadb|amavis|apache' | awk '{print $1}' ); do 
-    echo "Stopping: $i"
-    systemctl stop $i 
-  done
+  if systemctl list-unit-files >/dev/null 2>&1 ; then
+    for i in $(systemctl list-unit-files | grep -v '@' | egrep 'redis|fail2ban|postfix|virtualmin|webmin|usermin|named|dovecot|proftp|exim|spamass|php|postgres|mailman|mysql|mariadb|amavis|apache' | awk '{print $1}' ); do 
+      echo "Stopping: $i"
+      systemctl stop $i 
+    done
+  else
+    echo "Warning: not stopping services on a non-systemd or faulty machine"
+  fi
 
   [ -z "$isignorehostname" ] && ! grep -q  backup <(hostname) && echo 'hostname ($(hostname)) does not contain the "backup", exiting as a safety precaution.  If this is the right host, set a hostname like: hostname backup.$(hostname)  Disable this check with the --ignorehostname option' && ret=1 && break
   [ -z "$isignoreports" ] && [ 0 -ne $(netstat -ntp | egrep -v ':22|Foreign Address|Active Internet connections' | wc -l) ] && echo "There are some non ssh connections.  Wrong server?  Disable this check with the --ignoreports option" && netstat -ntp && ret=1 && break
@@ -165,7 +188,11 @@ while true; do
     restorescratchdir="${restorescratchdirdefault}"
     mkdir -p $restorescratchdir
     echo "Extracting backup to restore directory $restorescratchdir from $archivegz ($(ls -lh $archivegz))"
-    tar xzf "$archivegz" --directory "$restorescratchdir"
+    if [ "encrypt" = "openssl" ] ; then
+      openssl dec -aes-256-cbc -md sha256 -pass "pass:$password" < "$archivegz" | tar xz --directory "$restorescratchdir"
+    else
+      tar xzf "$archivegz" --directory "$restorescratchdir"
+    fi
     [ $? -ne 0 ] && ret=1 && break
   fi
   [ -z "$restorescratchdir" ] && echo "no restore directory set" >&2 && ret=1 && break 
