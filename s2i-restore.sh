@@ -97,9 +97,8 @@ function parse() {
         ;;
       --decrypt)
         shift
-        openssl ] decrypt a file using openssl before attempting to restore from it
         if [ "$1" != "openssl" ]; then
-          echo "Missing --restoretopath value" >&2
+          echo "Invalid --decrypt value, try openssl" >&2
           usage
           return 1
         fi
