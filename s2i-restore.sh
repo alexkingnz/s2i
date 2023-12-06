@@ -6,6 +6,8 @@
 ip="$(ifconfig eth0 2>/dev/null| grep 'inet ' | sed 's/inet addr:/inet /' | awk '{print $2}')"
 # The following works on recent distros with iproute installed.
 [ -z "$ip" ] && ip="$(ip --json route get 1 2>/dev/null | awk -vRS="," '/src/'|tr -d "\""|cut -d: -f2)"
+# And for older distros where ip doesn't have the "--json" option
+[ -z "$ip" ] && ip="$(ip route get 1 2>/dev/null |head -1|awk '{for (f=1;f<NF;f++) if ($f == "src") printf $(f+1)}')"
 
 #change these to your IP.  old = original host's IP.  new = the IP on the server we are restoring to
 oldip="${oldip:-127.0.0.3}"
@@ -190,10 +192,11 @@ while true; do
     echo "Extracting backup to restore directory $restorescratchdir from $archivegz ($(ls -lh $archivegz))"
     if [ "encrypt" = "openssl" ] ; then
       openssl enc -d -aes-256-cbc -md sha256 -pass "pass:$password" < "$archivegz" | tar xz --directory "$restorescratchdir"
+      [ $? -ne 0 ] && ret=1 && break
     else
       tar xzf "$archivegz" --directory "$restorescratchdir"
+      [ $? -ne 0 ] && ret=1 && break
     fi
-    [ $? -ne 0 ] && ret=1 && break
   fi
   [ -z "$restorescratchdir" ] && echo "no restore directory set" >&2 && ret=1 && break 
   echo "Rsync-ing from $restorescratchdir to ${restoretopath:-/}"
