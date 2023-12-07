@@ -203,6 +203,8 @@ while true; do
    # --force-change for immutables, but does not work on some distros. e.g. 311/2014
    # --force = force deletion of dirs even if not empty
    # using realpath below since "rsync /root/s2i.restore /" creates /s2i.restore.  Rather we need "rsync /root/s2i.restore/ /" 
+   # However, realpath doesn't exist on some systems, so use "readlink -f" instead
+
 rsync --force --delete --archive --hard-links --xattrs --perms --executability --acls --owner --group --specials --times --numeric-ids --ignore-errors \
 --exclude=/etc/network/interfaces \
 --exclude='/root/s2i*' \
@@ -222,7 +224,7 @@ rsync --force --delete --archive --hard-links --xattrs --perms --executability -
 --exclude=/home/*/.gvfs \
 --exclude=/home/*/.cache \
 --exclude=/home/*/.local/share/Trash \
-"$(realpath "$restorescratchdir")/" "${restoretopath:-/}" 2>&1 | tee -a rsync.log
+"$(readlink -f "$restorescratchdir")/" "${restoretopath:-/}" 2>&1 | tee -a rsync.log
   if [ ${PIPESTATUS[0]} -ne 1 ] ; then 
     echo "Error or warning from rsync." >&2
     ret=1
