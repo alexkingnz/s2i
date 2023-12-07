@@ -190,7 +190,7 @@ while true; do
     restorescratchdir="${restorescratchdirdefault}"
     mkdir -p $restorescratchdir
     echo "Extracting backup to restore directory $restorescratchdir from $archivegz ($(ls -lh $archivegz))"
-    if [ "encrypt" = "openssl" ] ; then
+    if [ "$encrypt" = "openssl" ] ; then
       openssl enc -d -aes-256-cbc -md sha256 -pass "pass:$password" < "$archivegz" | tar xz --directory "$restorescratchdir"
       [ $? -ne 0 ] && ret=1 && break
     else
